@@ -76,8 +76,7 @@ implemented by Data::Dump::Filtered.
 =item * dd_filter => \&sub
 
 If you have other Data::Dump::Filtered filter you want to execute, you
-can pass it here. The filter will be executed after all the other
-internal routines of this module.
+can pass it here.
 
 =back
 
@@ -91,6 +90,9 @@ sub dump_partial {
     $opts->{max_elems}     //=  5;
     $opts->{max_len}       //= 32;
     $opts->{max_total_len} //= 80;
+
+    $opts->{max_keys} = @{$opts->{precious_keys}} if $opts->{precious_keys} &&
+        @{ $opts->{precious_keys} } > $opts->{max_keys};
 
     my $out;
 
@@ -115,7 +117,7 @@ sub dump_partial {
                 local $opts->{_inner} = 1;
                 local $opts->{max_total_len} = 0;
                 my $out = dump_partial(\@ary, $opts);
-                $out =~ s/(?:, )?]$/, ... ]/;
+                $out =~ s/(?:, )?]$/, ...]/;
                 return { dump => $out };
 
             } elsif ($opts->{max_keys} && $ctx->is_hash &&
@@ -125,13 +127,19 @@ sub dump_partial {
                 my %hash = %$oref;
                 my $mk = $opts->{max_keys};
                 {
-                    if ($opts->{worthless_keys}) {
+                    if ($opts->{hide_keys}) {
                         for (keys %hash) {
-                            delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
-                            last if keys(%hash) <= $mk;
+                            delete $hash{$_} if $_ ~~ @{$opts->{hide_keys}};
                         }
                     }
-                    last if keys(%hash) <= $opts->{max_keys};
+                    last if keys(%hash) <= $mk;
+                    if ($opts->{worthless_keys}) {
+                        for (keys %hash) {
+                            last if keys(%hash) <= $mk;
+                            delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
+                        }
+                    }
+                    last if keys(%hash) <= $mk;
                     for (keys %hash) {
                         delete $hash{$_} if !$opts->{precious_keys} ||
                             !($_ ~~ @{$opts->{precious_keys}});
@@ -141,7 +149,7 @@ sub dump_partial {
                 local $opts->{_inner} = 1;
                 local $opts->{max_total_len} = 0;
                 my $out = dump_partial(\%hash, $opts);
-                $out =~ s/(?:, )?}$/, ... }/;
+                $out =~ s/(?:, )? }$/, ... }/;
                 return { dump => $out };
 
             } elsif ($opts->{dd_filter}) {
