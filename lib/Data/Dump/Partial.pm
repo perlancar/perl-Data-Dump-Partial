@@ -104,7 +104,7 @@ sub dump_partial {
         my $filter = sub {
             my ($ctx, $oref) = @_;
 
-            if ($opts->{max_len} && $ctx->is_scalar &&
+            if ($opts->{max_len} && $ctx->is_scalar && defined($$oref) &&
                     length($$oref) > $opts->{max_len}) {
 
                 return { object => substr($$oref, 0, $opts->{max_len}-3)."..." };
