@@ -73,6 +73,29 @@ When needing to truncate hash keys, search for these first.
 Always truncate these hash keys, no matter what. This is actually also
 implemented by Data::Dump::Filtered.
 
+=item * mask_keys_regex => REGEX
+
+When encountering keys that match certain regex, mask it with '***'. This can
+be useful if you want to mask passwords, e.g.: mask_keys_regex =>
+qr/\Apass\z|passw(or)?d/i. If you want more general masking, you can use
+pair_filter.
+
+=item * pair_filter => CODE
+
+CODE will be called for each hash key/value pair encountered in the data. It will
+be given ($key, $value) as argument and is expected to return a list of one or
+more of keys and values. The example below implements something similar to what
+mask_keys_regex accomplishes:
+
+ # mask each password character with '*'
+ hash_pair_filter => sub {
+     my ($k, $v) = @_;
+     if ($k =~ /\Apass\z|passw(or)?d/i) {
+         $v =~ s/./*/g;
+     }
+     ($k, $v);
+ }
+
 =item * dd_filter => \&sub
 
 If you have other Data::Dump::Filtered filter you want to execute, you
@@ -82,8 +105,12 @@ can pass it here.
 
 =cut
 
+sub _dmp { Data::Dump::Filtered::dump_filtered(@_, undef) }
+
 sub dump_partial {
     my @data = @_;
+    die 'Usage: dump_partial(@data, \%opts)'
+        if @data > 1 && ref($data[-1]) ne 'HASH';
     my $opts = (@data > 1) ? {%{pop(@data)}} : {};
 
     $opts->{max_keys}      //=  5;
@@ -97,16 +124,26 @@ sub dump_partial {
     my $out;
 
     if ($opts->{_inner}) {
-        #print "DEBUG: inner dump\n";
+        #print "DEBUG: inner dump, data="._dmp(@data)."\n";
         $out = Data::Dump::dump(@data);
     } else {
-        #print "DEBUG: outer dump\n";
+        #print "DEBUG: outer dump, data="._dmp(@data)."\n";
         my $filter = sub {
             my ($ctx, $oref) = @_;
+
+            # to avoid deep recursion (dump_partial keeps modifying the hash due
+            # to pair_filter or mask_keys_regex)
+            my $skip_modify_outermost_hash;
+            if ($opts->{_skip_modify_outermost_hash}) {
+                #print "DEBUG: Will skip modify outermost hash\n";
+                $skip_modify_outermost_hash++;
+                $opts->{_skip_modify_outermost_hash}--;
+            }
 
             if ($opts->{max_len} && $ctx->is_scalar && defined($$oref) &&
                     length($$oref) > $opts->{max_len}) {
 
+                #print "DEBUG: truncating scalar\n";
                 return { object => substr($$oref, 0, $opts->{max_len}-3)."..." };
 
             } elsif ($opts->{max_elems} && $ctx->is_array &&
@@ -120,46 +157,75 @@ sub dump_partial {
                 $out =~ s/(?:, )?]$/, ...]/;
                 return { dump => $out };
 
-            } elsif ($opts->{max_keys} && $ctx->is_hash &&
-                         keys(%$oref) > $opts->{max_keys}) {
+            } elsif ($ctx->is_hash) {
 
-                #print "DEBUG: truncating hash\n";
-                my %hash = %$oref;
-                my $mk = $opts->{max_keys};
-                {
-                    if ($opts->{hide_keys}) {
-                        for (keys %hash) {
-                            delete $hash{$_} if $_ ~~ @{$opts->{hide_keys}};
+                my %hash;
+                my $modified;
+
+                if ($opts->{pair_filter} && !$skip_modify_outermost_hash) {
+                    for (keys %$oref) {
+                        my @res = $opts->{pair_filter}->($_, $oref->{$_});
+                        $modified = "pair_filter" unless @res == 2 &&
+                            $res[0] eq $_ && "$res[1]" eq "$oref->{$_}";
+                        while (my ($k, $v) = splice @res, 0, 2) {
+                            $hash{$k} = $v;
                         }
                     }
-                    last if keys(%hash) <= $mk;
-                    if ($opts->{worthless_keys}) {
-                        for (keys %hash) {
-                            last if keys(%hash) <= $mk;
-                            delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
-                        }
-                    }
-                    last if keys(%hash) <= $mk;
+                } else {
+                    %hash = %$oref;
+                }
+
+                if ($opts->{mask_keys_regex} && !$skip_modify_outermost_hash) {
                     for (keys %hash) {
-                        delete $hash{$_} if !$opts->{precious_keys} ||
-                            !($_ ~~ @{$opts->{precious_keys}});
-                        last if keys(%hash) <= $mk;
+                        if (/$opts->{mask_keys_regex}/) {
+                            $modified = "mask_keys_regex";
+                            $hash{$_} = '***';
+                        }
                     }
                 }
-                local $opts->{_inner} = 1;
-                local $opts->{max_total_len} = 0;
-                my $out = dump_partial(\%hash, $opts);
-                $out =~ s/(?:, )? }$/, ... }/;
-                return { dump => $out };
 
-            } elsif ($opts->{dd_filter}) {
+                my $truncated;
+                if ($opts->{max_keys} && keys(%$oref) > $opts->{max_keys}) {
+                    my $mk = $opts->{max_keys};
+                    {
+                        if ($opts->{hide_keys}) {
+                            for (keys %hash) {
+                                delete $hash{$_} if $_ ~~ @{$opts->{hide_keys}};
+                            }
+                        }
+                        last if keys(%hash) <= $mk;
+                        if ($opts->{worthless_keys}) {
+                            for (keys %hash) {
+                                last if keys(%hash) <= $mk;
+                                delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
+                            }
+                        }
+                        last if keys(%hash) <= $mk;
+                        for (keys %hash) {
+                            delete $hash{$_} if !$opts->{precious_keys} ||
+                                !($_ ~~ @{$opts->{precious_keys}});
+                            last if keys(%hash) <= $mk;
+                        }
+                    }
+                    $modified = "truncate";
+                    $truncated++;
+                }
 
+                if ($modified) {
+                    #print "DEBUG: modified hash ($modified)\n";
+                    local $opts->{_inner} = 1;
+                    local $opts->{_skip_modify_outermost_hash} = 1;
+                    local $opts->{max_total_len} = 0;
+                    my $out = dump_partial(\%hash, $opts);
+                    $out =~ s/(?:, )? }$/, ... }/ if $truncated;
+                    return { dump => $out };
+                }
+            }
+
+            if ($opts->{dd_filter}) {
                 return $opts->{dd_filter}->($ctx, $oref);
-
             } else {
-
                 return;
-
             }
         };
         $out = Data::Dump::Filtered::dump_filtered(@data, $filter);

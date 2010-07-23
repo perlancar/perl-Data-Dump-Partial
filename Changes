@@ -1,5 +1,10 @@
 Revision history for Data-Dump-Partial
 
+0.03     2010-07-23
+
+         Add options: mask_keys_regex, pair_filter.
+
+
 0.02     2010-07-01
 
          Correct handling of undef.
