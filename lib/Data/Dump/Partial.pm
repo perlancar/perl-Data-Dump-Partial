@@ -41,10 +41,12 @@ By compactly, it means all indents and comments and newlines are removed, so the
 output all fits in one line.
 
 By partially, it means only up to a certain amount of data are dumped/shown:
-strings longer than a certain length will be truncated (with "..." appended in
-the end), array more than a certain number of elements will be truncated, and so
-on. It also has a feature to mask certain hash key values (for example, masking
-passwords).
+string longer than a certain length will be truncated (with "..." appended in the
+end), array more than a certain number of elements will be truncated, and hash
+containing more than a certain number of pairs will be truncated. The total
+length of dump is also limited. When truncating hash you can specify which keys
+to discard/preserve first. You can also mask certain hash key values (for
+example, to avoid exposing passwords in dumps).
 
 $opts is a hashref, optional only when there is one data to dump, with the
 following known keys:
@@ -85,15 +87,15 @@ implemented by Data::Dump::Filtered.
 
 =item * mask_keys_regex => REGEX
 
-When encountering keys that match certain regex, mask it with '***'. This can be
-useful if you want to mask passwords, e.g.: mask_keys_regex =>
+When encountering keys that match certain regex, mask the values with '***'. This
+can be useful if you want to mask passwords, e.g.: mask_keys_regex =>
 qr/\Apass\z|passw(or)?d/i. If you want more general masking, you can use
 pair_filter.
 
 =item * pair_filter => CODE
 
 CODE will be called for each hash key/value pair encountered in the data. It will
-be given ($key, $value) as argument and is expected to return a list of one or
+be given ($key, $value) as argument and is expected to return a list of zero or
 more of keys and values. The example below implements something similar to what
 mask_keys_regex accomplishes:
 
