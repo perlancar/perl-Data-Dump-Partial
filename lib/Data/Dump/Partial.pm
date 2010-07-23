@@ -18,7 +18,13 @@ our @EXPORT_OK = qw(dump_partial dumpp);
  # prints something like: [1, "some long st...", 3, 4, 5, ...]
 
  # specify options
- dump_partial($data, $more_data, {max_total_len => 50, max_keys => 4});
+ dumpp($data, $more_data, {max_total_len => 50, max_keys => 4});
+
+ # mask passwords specified in hash key values
+ dumpp({auth_info=>{user=>"steven", password=>"secret"}, foo=>1, bar=>2},
+       {mask_keys_regex=>qr/\Apass\z|passw(or)?d/i});
+ # prints something like:
+ # {auth_info=>{user=>"steven", password=>"***"}, foo=>1, bar=>2}
 
 =head1 DESCRIPTION
 
@@ -28,41 +34,45 @@ our @EXPORT_OK = qw(dump_partial dumpp);
 
 =head2 dump_partial(..., $opts)
 
-Dump one more data structures compactly and potentially
-partially. Uses L<Data::Dump::Filtered> as the backend. By compactly,
-it means all indents and comments and newlines are removed, so the
-output all fits in one line. By partially, it means only a certain
-number of scalar length, array elements, hash keys are showed.
+Dump one more data structures compactly and potentially partially. Uses
+L<Data::Dump::Filtered> as the backend.
 
-$opts is a hashref, optional only when there is one data to dump, with
-the following known keys:
+By compactly, it means all indents and comments and newlines are removed, so the
+output all fits in one line.
+
+By partially, it means only up to a certain amount of data are dumped/shown:
+strings longer than a certain length will be truncated (with "..." appended in
+the end), array more than a certain number of elements will be truncated, and so
+on. It also has a feature to mask certain hash key values (for example, masking
+passwords).
+
+$opts is a hashref, optional only when there is one data to dump, with the
+following known keys:
 
 =over 4
 
 =item * max_total_len => NUM
 
-Total length of output before it gets truncated with an
-ellipsis. Default is 80.
+Total length of output before it gets truncated with an ellipsis. Default is 80.
 
 =item * max_len => NUM
 
-Maximum length of a scalar (string, etc) to show before the rest get
-truncated with an ellipsis. Default is 32.
+Maximum length of a scalar (string, etc) to show before the rest get truncated
+with an ellipsis. Default is 32.
 
 =item * max_keys => NUM
 
-Number of key pairs of a hash to show before the rest get truncated
-with an ellipsis. Default is 5.
+Number of key pairs of a hash to show before the rest get truncated with an
+ellipsis. Default is 5.
 
 =item * max_elems => NUM
 
-Number of elements of an array to show before the rest get truncated
-with an ellipsis. Default is 5.
+Number of elements of an array to show before the rest get truncated with an
+ellipsis. Default is 5.
 
 =item * precious_keys => [KEY, ...]
 
-Never truncate these keys (even if it results in max_keys limit being
-exceeded).
+Never truncate these keys (even if it results in max_keys limit being exceeded).
 
 =item * worthless_keys => [KEY, ...]
 
@@ -75,8 +85,8 @@ implemented by Data::Dump::Filtered.
 
 =item * mask_keys_regex => REGEX
 
-When encountering keys that match certain regex, mask it with '***'. This can
-be useful if you want to mask passwords, e.g.: mask_keys_regex =>
+When encountering keys that match certain regex, mask it with '***'. This can be
+useful if you want to mask passwords, e.g.: mask_keys_regex =>
 qr/\Apass\z|passw(or)?d/i. If you want more general masking, you can use
 pair_filter.
 
@@ -98,8 +108,8 @@ mask_keys_regex accomplishes:
 
 =item * dd_filter => \&sub
 
-If you have other Data::Dump::Filtered filter you want to execute, you
-can pass it here.
+If you have other Data::Dump::Filtered filter you want to execute, you can pass
+it here.
 
 =back
 
@@ -259,9 +269,8 @@ sub dumpp { dump_partial(@_) }
 
 =head2 What is the point/purpose of this module?
 
-Sometimes you want to dump a data structure, but need it to be short,
-more than need it to be complete, for example when logging to log
-files or database.
+Sometimes you want to dump a data structure, but need it to be short, more than
+need it to be complete, for example when logging to log files or database.
 
 =head2 Is the dump result eval()-able? Will the dump result eval() to produce the original data?
 
