@@ -69,7 +69,7 @@ sub dump_partial {
                 my $modified;
 
                 if ($opts->{pair_filter} && !$skip_modify_outermost_hash) {
-                    for (keys %$oref) {
+                    for (sort keys %$oref) {
                         my @res = $opts->{pair_filter}->($_, $oref->{$_});
                         $modified = "pair_filter" unless @res == 2 &&
                             $res[0] eq $_ && "$res[1]" eq "$oref->{$_}";
@@ -82,7 +82,7 @@ sub dump_partial {
                 }
 
                 if ($opts->{mask_keys_regex} && !$skip_modify_outermost_hash) {
-                    for (keys %hash) {
+                    for (sort keys %hash) {
                         if (/$opts->{mask_keys_regex}/) {
                             $modified = "mask_keys_regex";
                             $hash{$_} = '***';
@@ -95,19 +95,19 @@ sub dump_partial {
                     my $mk = $opts->{max_keys};
                     {
                         if ($opts->{hide_keys}) {
-                            for (keys %hash) {
+                            for (sort keys %hash) {
                                 delete $hash{$_} if $_ ~~ @{$opts->{hide_keys}};
                             }
                         }
                         last if keys(%hash) <= $mk;
                         if ($opts->{worthless_keys}) {
-                            for (keys %hash) {
+                            for (sort keys %hash) {
                                 last if keys(%hash) <= $mk;
                                 delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
                             }
                         }
                         last if keys(%hash) <= $mk;
-                        for (keys %hash) {
+                        for (reverse sort keys %hash) {
                             delete $hash{$_} if !$opts->{precious_keys} ||
                                 !($_ ~~ @{$opts->{precious_keys}});
                             last if keys(%hash) <= $mk;
