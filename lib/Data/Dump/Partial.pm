@@ -151,6 +151,8 @@ sub dump_partial {
     $out;
 }
 
+sub dumpp { dump_partial(@_) }
+
 1;
 # ABSTRACT: Dump data structure compactly and potentially partially
 
@@ -262,10 +264,6 @@ it here.
 =head2 dumpp
 
 An alias for dump_filtered().
-
-=cut
-
-sub dumpp { dump_partial(@_) }
 
 
 =head1 FAQ
