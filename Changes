@@ -10,14 +10,14 @@ Revision history for Data-Dump-Partial
 
 0.03     2010-07-23 (SHARYANTO)
 
-         Add options: mask_keys_regex, pair_filter.
+         - Add options: mask_keys_regex, pair_filter.
 
 
 0.02     2010-07-01 (SHARYANTO)
 
-         Correct handling of undef.
+         - Correct handling of undef.
 
 
 0.01     2010-06-26 (SHARYANTO)
 
-         First release.
+         - First release.
