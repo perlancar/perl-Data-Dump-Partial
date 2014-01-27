@@ -1,8 +1,9 @@
 package Data::Dump::Partial;
 
-use 5.010;
+use 5.010001;
 use strict;
 use warnings;
+use experimental 'smartmatch';
 use Data::Dump::Filtered;
 
 require Exporter;
