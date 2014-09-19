@@ -168,10 +168,10 @@ sub dumpp { dump_partial(@_) }
  dumpp($data, $more_data, {max_total_len => 50, max_keys => 4});
 
  # mask passwords specified in hash key values
- dumpp({auth_info=>{user=>"steven", password=>"secret"}, foo=>1, bar=>2},
+ dumpp({auth_info=>{user=>"jajang", password=>"secret"}, foo=>1, bar=>2},
        {mask_keys_regex=>qr/\Apass\z|passw(or)?d/i});
  # prints something like:
- # {auth_info=>{user=>"steven", password=>"***"}, foo=>1, bar=>2}
+ # {auth_info=>{user=>"jajang", password=>"***"}, foo=>1, bar=>2}
 
 
 =head1 DESCRIPTION
