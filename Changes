@@ -1,3 +1,9 @@
+0.06    2023-08-07  Released-By: PERLANCAR; Urgency: medium
+
+        - Remove usage of smartmatch to avoid deprecation warning in perl
+          5.38+.
+
+
 0.05     2014-03-28  Released-By: SHARYANTO
 
          - No functional changes.
