@@ -10,6 +10,9 @@ require Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(dump_partial dumpp);
 
+# AUTHORITY
+# DATE
+# DIST
 # VERSION
 
 sub _dmp { Data::Dump::Filtered::dump_filtered(@_, undef) }
@@ -96,21 +99,21 @@ sub dump_partial {
                     my $mk = $opts->{max_keys};
                     {
                         if ($opts->{hide_keys}) {
-                            for (sort keys %hash) {
-                                delete $hash{$_} if $_ ~~ @{$opts->{hide_keys}};
+                            for my $k (sort keys %hash) {
+                                delete $hash{$k} if grep { $_ eq $k } @{$opts->{hide_keys}};
                             }
                         }
                         last if keys(%hash) <= $mk;
                         if ($opts->{worthless_keys}) {
-                            for (sort keys %hash) {
+                            for my $k (sort keys %hash) {
                                 last if keys(%hash) <= $mk;
-                                delete $hash{$_} if $_ ~~ @{$opts->{worthless_keys}};
+                                delete $hash{$k} if grep { $_ eq $k } @{$opts->{worthless_keys}};
                             }
                         }
                         last if keys(%hash) <= $mk;
-                        for (reverse sort keys %hash) {
-                            delete $hash{$_} if !$opts->{precious_keys} ||
-                                !($_ ~~ @{$opts->{precious_keys}});
+                        for my $k (reverse sort keys %hash) {
+                            delete $hash{$k} if !$opts->{precious_keys} ||
+                                !(grep { $_ eq $k } @{$opts->{precious_keys}});
                             last if keys(%hash) <= $mk;
                         }
                     }
